@@ -1,0 +1,41 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+/// Estado genérico de una consulta
+class QueryState<T> {
+  final bool isLoading;
+  final T? data;
+  final String? error;
+
+  QueryState({
+    required this.isLoading,
+    this.data,
+    this.error,
+  });
+
+  factory QueryState.initial() => QueryState(isLoading: false, data: null, error: null);
+}
+
+/// Notificador genérico que ejecuta una función async y actualiza el estado
+class QueryNotifier<T> extends Notifier<QueryState<T>> {
+  @override
+  QueryState<T> build() => QueryState<T>.initial();
+
+  /// Ejecuta [fetchFunction] y actualiza [state] con loading/data/error
+  Future<void> fetchData(Future<T> Function() fetchFunction) async {
+    // Mantener el data actual mientras carga para no perder información previa
+    state = QueryState<T>(isLoading: true, data: state.data, error: null);
+
+    try {
+      final result = await fetchFunction();
+      state = QueryState<T>(isLoading: false, data: result, error: null);
+    } catch (e) {
+      state = QueryState<T>(isLoading: false, data: state.data, error: e.toString());
+    }
+  }
+}
+
+/// Provider genérico para consultas parametrizadas
+queryProviderFamily<T>() =>
+    NotifierProvider.family<QueryNotifier<T>, QueryState<T>, String>(
+      (key) => QueryNotifier<T>(),
+    );
